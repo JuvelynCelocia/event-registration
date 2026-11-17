@@ -8,6 +8,7 @@ declare(strict_types=1);
  * The file lives in backend/storage/app.sqlite and is created automatically the
  * first time the API is called.
  */
+
 function db(): PDO
 {
     static $pdo = null;
@@ -16,12 +17,27 @@ function db(): PDO
         return $pdo;
     }
 
-    $storage = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'storage';
-    if (!is_dir($storage) && !mkdir($storage, 0777, true) && !is_dir($storage)) {
+    // Use Railway database path if configured.
+    // Otherwise, use the local SQLite database.
+    $databasePath = getenv('DB_PATH');
+
+    if (!$databasePath) {
+        $databasePath = dirname(__DIR__)
+            . DIRECTORY_SEPARATOR . 'storage'
+            . DIRECTORY_SEPARATOR . 'app.sqlite';
+    }
+
+    $storage = dirname($databasePath);
+
+    if (
+        !is_dir($storage) &&
+        !mkdir($storage, 0777, true) &&
+        !is_dir($storage)
+    ) {
         throw new RuntimeException('Could not create the storage directory.');
     }
 
-    $pdo = new PDO('sqlite:' . $storage . DIRECTORY_SEPARATOR . 'app.sqlite');
+    $pdo = new PDO('sqlite:' . $databasePath);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     $pdo->exec('PRAGMA foreign_keys = ON');
@@ -32,6 +48,7 @@ function db(): PDO
 
     return $pdo;
 }
+
 
 function migrate(PDO $pdo): void
 {
