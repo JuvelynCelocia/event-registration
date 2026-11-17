@@ -1,0 +1,163 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Small HTTP helpers shared by every API route.
+ */
+
+function send_cors_headers(): void
+{
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, Accept');
+    header('Access-Control-Max-Age: 86400');
+}
+
+/**
+ * Encode a payload as JSON and stop the request.
+ */
+function json_response(mixed $data, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+
+    $json = json_encode(
+        $data,
+        JSON_UNESCAPED_SLASHES
+        | JSON_UNESCAPED_UNICODE
+        | JSON_INVALID_UTF8_SUBSTITUTE
+    );
+
+    if ($json === false) {
+        http_response_code(500);
+        echo '{"message":"Unable to encode the server response."}';
+        exit;
+    }
+
+    echo $json;
+    exit;
+}
+
+/**
+ * Stop the request with a JSON error.
+ *
+ * @param array<string, string> $errors
+ */
+function fail(string $message, int $status = 400, array $errors = []): never
+{
+    json_response([
+        'message' => $message,
+        'errors' => $errors ?: new stdClass(),
+    ], $status);
+}
+
+/**
+ * Read a JSON request body.
+ *
+ * @return array<string, mixed>
+ */
+function request_body(): array
+{
+    $raw = file_get_contents('php://input');
+
+    if ($raw === false || trim($raw) === '') {
+        return [];
+    }
+
+    $decoded = json_decode($raw, true);
+
+    if (!is_array($decoded)) {
+        fail('The request body must be valid JSON.', 400);
+    }
+
+    return $decoded;
+}
+
+/**
+ * Trimmed string value from an input array.
+ *
+ * @param array<string, mixed> $data
+ */
+function string_value(
+    array $data,
+    string $key,
+    string $label,
+    int $max = 255
+): string {
+    $value = trim((string) ($data[$key] ?? ''));
+
+    if ($value === '') {
+        fail($label . ' is required.', 422, [
+            $key => $label . ' is required.',
+        ]);
+    }
+
+    if (mb_strlen($value) > $max) {
+        fail($label . ' is too long.', 422, [
+            $key => 'Use ' . $max . ' characters or fewer.',
+        ]);
+    }
+
+    return $value;
+}
+
+/**
+ * Optional trimmed string value from an input array.
+ *
+ * @param array<string, mixed> $data
+ */
+function optional_string(
+    array $data,
+    string $key,
+    int $max = 255
+): string {
+    $value = trim((string) ($data[$key] ?? ''));
+
+    return mb_substr($value, 0, $max);
+}
+
+/**
+ * @param array<string, mixed> $data
+ */
+function validate_email(array $data, string $key = 'email'): string
+{
+    $email = trim((string) ($data[$key] ?? ''));
+
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        fail('Please enter a valid email address.', 422, [
+            $key => 'Please enter a valid email address.',
+        ]);
+    }
+
+    return mb_strtolower($email);
+}
+
+/**
+ * @param array<string, mixed> $data
+ */
+function int_value(
+    array $data,
+    string $key,
+    int $min,
+    int $max,
+    string $label
+): int {
+    $raw = $data[$key] ?? null;
+
+    if ($raw === null || $raw === '' || !is_numeric($raw)) {
+        fail($label . ' is required.', 422, [
+            $key => $label . ' is required.',
+        ]);
+    }
+
+    $value = (int) $raw;
+
+    if ($value < $min || $value > $max) {
+        fail($label . ' is invalid.', 422, [
+            $key => 'Choose a value between ' . $min . ' and ' . $max . '.',
+        ]);
+    }
+
+    return $value;
+}
