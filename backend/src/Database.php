@@ -239,18 +239,19 @@ function seed(PDO $pdo): void
     );
 
     foreach ($registrations as [$title, $reference, $attendees]) {
-        $eventId->execute([$title]);
-        $id = (int) $eventId->fetchColumn();
-        if ($id > 0) {
-            $insertRegistration->execute([
-                $alexId,
-                $id,
-                'Alex Santos',
-                'alex.santos@email.com',
-                '+63 900 000 0000',
-                $attendees,
-                $reference,
-            ]);
-        }
+    $eventId->execute([$title]);
+    $id = (int) $eventId->fetchColumn();
+
+    if ($id > 0) {
+        $insertRegistration->execute([
+            $alexId,
+            $id,
+            'Alex Santos',
+            'alex.santos@email.com',
+            '+63 900 000 0000',
+            $attendees,
+            $reference,
+        ]);
     }
+}
 }
