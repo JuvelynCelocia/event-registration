@@ -7,10 +7,14 @@ RUN apt-get update \
     && docker-php-ext-install pdo_sqlite \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable only the Apache MPM required by PHP
-RUN a2dismod mpm_event || true
-RUN a2dismod mpm_worker || true
-RUN a2enmod mpm_prefork rewrite
+# Ensure only one Apache MPM is enabled
+RUN rm -f \
+    /etc/apache2/mods-enabled/mpm_event.load \
+    /etc/apache2/mods-enabled/mpm_event.conf \
+    /etc/apache2/mods-enabled/mpm_worker.load \
+    /etc/apache2/mods-enabled/mpm_worker.conf \
+    && a2enmod mpm_prefork rewrite \
+    && test "$(apache2ctl -M 2>/dev/null | grep -Ec 'mpm_(event|worker|prefork)_module')" -eq 1
 
 # Set Apache document root to public
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
@@ -28,7 +32,7 @@ WORKDIR /var/www/html
 
 COPY . .
 
-# Add API rewrite rules
+# Add API rewrite rules and forward Authorization header
 RUN printf '%s\n' \
     'RewriteEngine On' \
     'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]' \
