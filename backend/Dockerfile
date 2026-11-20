@@ -26,7 +26,8 @@ RUN printf '<Directory /var/www/html/public>\n\
 WORKDIR /var/www/html
 
 COPY . .
-
+# Add API rewrite rules
+RUN printf 'RewriteEngine On\nRewriteCond %%{REQUEST_FILENAME} !-f\nRewriteRule ^ index.php [QSA,L]\n' > /var/www/html/public/.htaccess
 # Allow Apache to write to SQLite storage
 RUN mkdir -p /var/www/html/storage \
     && chown -R www-data:www-data /var/www/html/storage
