@@ -48,4 +48,13 @@ RUN mkdir -p /var/www/html/storage \
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "sed -i \"s/Listen 80/Listen ${PORT}/\" /etc/apache2/ports.conf && sed -i \"s/<VirtualHost \\\\*:80>/<VirtualHost *:${PORT}>/\" /etc/apache2/sites-available/000-default.conf && apache2-foreground"]
+
+CMD ["sh", "-c", "set -e; \
+    sed -i \"s/Listen 80/Listen ${PORT}/\" /etc/apache2/ports.conf; \
+    sed -i \"s/<VirtualHost \\\\*:80>/<VirtualHost *:${PORT}>/\" /etc/apache2/sites-available/000-default.conf; \
+    a2dismod mpm_event 2>/dev/null || true; \
+    a2dismod mpm_worker 2>/dev/null || true; \
+    a2dismod mpm_prefork 2>/dev/null || true; \
+    a2enmod mpm_prefork; \
+    exec apache2-foreground"]
+
