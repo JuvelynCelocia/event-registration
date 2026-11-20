@@ -1,7 +1,7 @@
 
 FROM php:8.4-apache
 
-# Install SQLite development library and PHP PDO SQLite extension
+# Install SQLite and PDO SQLite
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libsqlite3-dev \
     && docker-php-ext-install pdo_sqlite \
@@ -10,13 +10,12 @@ RUN apt-get update \
 # Enable Apache rewrite
 RUN a2enmod rewrite
 
-# Set the public folder as document root
+# Set Apache document root to public
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 
-RUN sed -ri 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
-    && sed -ri 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+RUN sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/*.conf
 
-# Configure API routing
+# Configure access and rewrite
 RUN printf '<Directory /var/www/html/public>\n\
     Options FollowSymLinks\n\
     AllowOverride All\n\
@@ -26,13 +25,15 @@ RUN printf '<Directory /var/www/html/public>\n\
 WORKDIR /var/www/html
 
 COPY . .
+
 # Add API rewrite rules
 RUN printf 'RewriteEngine On\nRewriteCond %%{REQUEST_FILENAME} !-f\nRewriteRule ^ index.php [QSA,L]\n' > /var/www/html/public/.htaccess
+
 # Allow Apache to write to SQLite storage
 RUN mkdir -p /var/www/html/storage \
     && chown -R www-data:www-data /var/www/html/storage
 
-# Render/Railway port
+# Railway port
 ENV PORT=8080
 EXPOSE 8080
 
