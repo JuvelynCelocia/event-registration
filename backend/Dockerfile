@@ -7,8 +7,10 @@ RUN apt-get update \
     && docker-php-ext-install pdo_sqlite \
     && rm -rf /var/lib/apt/lists/*
 
-# Enable Apache rewrite
-RUN a2enmod rewrite
+# Enable only the Apache MPM required by PHP
+RUN a2dismod mpm_event || true
+RUN a2dismod mpm_worker || true
+RUN a2enmod mpm_prefork rewrite
 
 # Set Apache document root to public
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
