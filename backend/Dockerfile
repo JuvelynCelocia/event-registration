@@ -27,7 +27,12 @@ WORKDIR /var/www/html
 COPY . .
 
 # Add API rewrite rules
-RUN printf 'RewriteEngine On\nRewriteCond %%{REQUEST_FILENAME} !-f\nRewriteRule ^ index.php [QSA,L]\n' > /var/www/html/public/.htaccess
+RUN printf '%s\n' \
+    'RewriteEngine On' \
+    'RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]' \
+    'RewriteCond %{REQUEST_FILENAME} !-f' \
+    'RewriteRule ^ index.php [QSA,L]' \
+    > /var/www/html/public/.htaccess
 
 # Allow Apache to write to SQLite storage
 RUN mkdir -p /var/www/html/storage \
